@@ -36,10 +36,10 @@ impl SlipPreparer {
     pub fn verify_slip_signature(
         &self,
         slip: &Slip,
-        sig_share: &Signature,
+        sig: &Signature,
         pk: &PublicKey,
     ) -> Result<()> {
-        verify_signature(slip, sig_share, pk)
+        verify_signature(slip, sig, pk)
     }
 }
 
@@ -59,28 +59,28 @@ impl From<[u8; 32]> for SlipPreparer {
 
 pub type Envelope = [u8; 96];
 
-pub struct SignedEnvelopeShare {
+pub struct SignedEnvelope {
     envelope: Envelope,
-    sig_share: [u8; 96],
+    signature: [u8; 96],
 }
 
-impl SignedEnvelopeShare {
-    pub fn signature_share_for_envelope(&self) -> Result<Signature> {
+impl SignedEnvelope {
+    pub fn signature_for_envelope(&self) -> Result<Signature> {
         Signature::from_bytes(self.envelope).map_err(Error::from)
     }
 
-    pub fn signature_share_for_slip(&self, blinding_factor: Fr) -> Result<Signature> {
+    pub fn signature_for_slip(&self, blinding_factor: Fr) -> Result<Signature> {
         // unblind the mint sig
-        let blinded_sig_g2 = be_bytes_to_g2(self.sig_share);
+        let blinded_sig_g2 = be_bytes_to_g2(self.signature);
         let unblinded_sig_g2 = unblind(blinded_sig_g2, blinding_factor);
 
         // Convert the unblinded G2 into a Signature
         let unblinded_bytes = g2_to_be_bytes(unblinded_sig_g2);
-        let unblinded_sig_share = Signature::from_bytes(unblinded_bytes).unwrap();
+        let unblinded_sig = Signature::from_bytes(unblinded_bytes).unwrap();
 
         println!("Unblinded signature: {:?}", unblinded_bytes);
 
-        Ok(unblinded_sig_share)
+        Ok(unblinded_sig)
     }
 }
 
@@ -104,7 +104,7 @@ impl BlindSigner {
         fr_from_be_bytes(self.sk.to_bytes())
     }
 
-    pub fn sign_envelope(&self, e: Envelope) -> Result<SignedEnvelopeShare> {
+    pub fn sign_envelope(&self, e: Envelope) -> Result<SignedEnvelope> {
         let blinded_msg_g2 = be_bytes_to_g2(e);
 
         // Note we are signing a G2, not message bytes, so we can't
@@ -115,9 +115,9 @@ impl BlindSigner {
         let mint_sig_bytes = g2_to_be_bytes(mint_sig_g2);
         println!("Mint signature of blinded message: {:?}", mint_sig_bytes);
 
-        let signed_envelope = SignedEnvelopeShare {
+        let signed_envelope = SignedEnvelope {
             envelope: e,
-            sig_share: mint_sig_bytes,
+            signature: mint_sig_bytes,
         };
 
         Ok(signed_envelope)
@@ -151,8 +151,8 @@ mod tests {
 
         let signed_envelope = official.sign_envelope(envelope)?;
 
-        let slip_sig_share = signed_envelope.signature_share_for_slip(voter.blinding_factor())?;
-        let result = voter.verify_slip_signature(&slip, &slip_sig_share, &official.public_key());
+        let slip_sig = signed_envelope.signature_for_slip(voter.blinding_factor())?;
+        let result = voter.verify_slip_signature(&slip, &slip_sig, &official.public_key());
 
         assert!(result.is_ok());
 

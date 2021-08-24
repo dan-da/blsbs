@@ -6,14 +6,14 @@ use blsttc::pairing::bls12_381::{Fr, FrRepr, G2Affine, G2};
 use blsttc::{PublicKey, Signature};
 use std::borrow::Borrow;
 
-pub(crate) fn verify_signature(data: &[u8], sig_share: &Signature, pk: &PublicKey) -> Result<()> {
+pub(crate) fn verify_signature(data: &[u8], sig: &Signature, pk: &PublicKey) -> Result<()> {
     // data can be Envelope or Slip
 
     let data_g2 = hash_g2_with_dst(data);
 
     // confirm the signature and message verify using the mint public key
     // ie the mint has signed the message without knowing the message
-    let verified = pk.verify_g2(sig_share, data_g2);
+    let verified = pk.verify_g2(sig, data_g2);
     println!("Msg verified using mint_pk: {:?}", verified);
 
     assert!(verified);
