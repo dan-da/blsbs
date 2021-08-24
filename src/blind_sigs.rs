@@ -100,7 +100,7 @@ impl SignedEnvelope {
     }
 
     pub fn signature_for_slip(&self, blinding_factor: Fr) -> Result<Signature> {
-        // unblind the mint sig
+        // unblind the BlindSigner's sig
         let blinded_sig_g2 = be_bytes_to_g2(self.signature.to_bytes());
         let unblinded_sig_g2 = unblind(blinded_sig_g2, blinding_factor);
 
@@ -137,15 +137,15 @@ impl BlindSigner {
     pub fn sign_envelope(&self, e: Envelope) -> Result<SignedEnvelope> {
         // Note we are signing a G2, not message bytes, so we can't
         // use blsttc:SecretKey.sign(msg);
-        let mint_sig_g2 = sign_g2(e.blinded_msg(), self.sk_bendian());
+        let bs_sig_g2 = sign_g2(e.blinded_msg(), self.sk_bendian());
 
-        // return mint sig on the wire
-        let mint_sig_bytes = g2_to_be_bytes(mint_sig_g2);
-        println!("Mint signature of blinded message: {:?}", mint_sig_bytes);
+        // return bs sig on the wire
+        let bs_sig_bytes = g2_to_be_bytes(bs_sig_g2);
+        println!("BlindSigner's signature of blinded message: {:?}", bs_sig_bytes);
 
         let signed_envelope = SignedEnvelope {
             envelope: e,
-            signature: Signature::from_bytes(mint_sig_bytes)?,
+            signature: Signature::from_bytes(bs_sig_bytes)?,
         };
 
         Ok(signed_envelope)

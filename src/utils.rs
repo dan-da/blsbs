@@ -11,10 +11,10 @@ pub(crate) fn verify_signature(data: &[u8], sig: &Signature, pk: &PublicKey) -> 
 
     let data_g2 = hash_g2_with_dst(data);
 
-    // confirm the signature and message verify using the mint public key
-    // ie the mint has signed the message without knowing the message
+    // confirm the signature and message verify using the blind-signer's public key
+    // ie the blind-signer has signed the message without knowing the message
     let verified = pk.verify_g2(sig, data_g2);
-    println!("Msg verified using mint_pk: {:?}", verified);
+    println!("Msg verified using blind_signer_pk: {:?}", verified);
 
     assert!(verified);
 
