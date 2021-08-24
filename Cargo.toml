@@ -1,0 +1,14 @@
+[package]
+name = "blstbs"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+blst = "0.3.4"
+thiserror = "1.0.26"
+
+
+[patch.crates-io]
+blst = { git = 'https://github.com/supranational/blst' }
