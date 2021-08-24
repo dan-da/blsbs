@@ -1,7 +1,9 @@
-pub use crate::error::{Error, Result};
+use crate::error::{Error, Result};
 use crate::utils::*;
-use blsttc::pairing::bls12_381::Fr;
+use blsttc::pairing::bls12_381::{Fr, G2};
 use blsttc::{PublicKey, SecretKey, Signature};
+use std::convert::TryFrom;
+use std::convert::TryInto;
 
 pub type Slip = Vec<u8>;
 
@@ -28,8 +30,7 @@ impl SlipPreparer {
 
         let blinded_msg = blind(msg_g2, self.blinding_factor);
 
-        // blinded_msg_bytes (Envelope aka [u8; 96])
-        g2_to_be_bytes(blinded_msg)
+        Envelope::from(blinded_msg)
     }
 
     #[allow(clippy::ptr_arg)]
@@ -57,21 +58,50 @@ impl From<[u8; 32]> for SlipPreparer {
     }
 }
 
-pub type Envelope = [u8; 96];
+pub struct Envelope {
+    blinded_msg: G2,
+}
+
+impl Envelope {
+    pub fn blinded_msg(&self) -> G2 {
+        self.blinded_msg
+    }
+}
+
+impl From<G2> for Envelope {
+    fn from(blinded_msg: G2) -> Self {
+        Self { blinded_msg }
+    }
+}
+
+impl From<[u8; 96]> for Envelope {
+    fn from(b: [u8; 96]) -> Self {
+        Self::from(be_bytes_to_g2(b))
+    }
+}
+
+impl TryFrom<&[u8]> for Envelope {
+    type Error = Error;
+
+    fn try_from(b: &[u8]) -> Result<Self> {
+        let bytes: [u8; 96] = b.try_into()?;
+        Ok(Self::from(bytes))
+    }
+}
 
 pub struct SignedEnvelope {
-    envelope: Envelope,
-    signature: [u8; 96],
+    pub envelope: Envelope,
+    signature: Signature,
 }
 
 impl SignedEnvelope {
-    pub fn signature_for_envelope(&self) -> Result<Signature> {
-        Signature::from_bytes(self.envelope).map_err(Error::from)
+    pub fn signature_for_envelope(&self) -> &Signature {
+        &self.signature
     }
 
     pub fn signature_for_slip(&self, blinding_factor: Fr) -> Result<Signature> {
         // unblind the mint sig
-        let blinded_sig_g2 = be_bytes_to_g2(self.signature);
+        let blinded_sig_g2 = be_bytes_to_g2(self.signature.to_bytes());
         let unblinded_sig_g2 = unblind(blinded_sig_g2, blinding_factor);
 
         // Convert the unblinded G2 into a Signature
@@ -105,11 +135,9 @@ impl BlindSigner {
     }
 
     pub fn sign_envelope(&self, e: Envelope) -> Result<SignedEnvelope> {
-        let blinded_msg_g2 = be_bytes_to_g2(e);
-
         // Note we are signing a G2, not message bytes, so we can't
         // use blsttc:SecretKey.sign(msg);
-        let mint_sig_g2 = sign_g2(blinded_msg_g2, self.sk_bendian());
+        let mint_sig_g2 = sign_g2(e.blinded_msg(), self.sk_bendian());
 
         // return mint sig on the wire
         let mint_sig_bytes = g2_to_be_bytes(mint_sig_g2);
@@ -117,7 +145,7 @@ impl BlindSigner {
 
         let signed_envelope = SignedEnvelope {
             envelope: e,
-            signature: mint_sig_bytes,
+            signature: Signature::from_bytes(mint_sig_bytes)?,
         };
 
         Ok(signed_envelope)

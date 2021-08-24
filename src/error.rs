@@ -1,5 +1,6 @@
 use blst::BLST_ERROR;
 use blsttc::error::FromBytesError;
+use std::array::TryFromSliceError;
 use thiserror::Error;
 
 /// Specialisation of `std::Result`.
@@ -17,6 +18,9 @@ pub enum BlindSignatureError {
 
     #[error("deserialization from bytes failed")]
     BlsttcFromBytes(#[from] FromBytesError),
+
+    #[error("deserialization from bytes failed")]
+    InvalidBytes(#[from] TryFromSliceError),
 }
 
 impl From<BLST_ERROR> for BlindSignatureError {
