@@ -8,7 +8,6 @@ edition = "2018"
 [dependencies]
 blst = "0.3.4"
 thiserror = "1.0.26"
+blsttc = "3.1.0"
+pairing = "0.20.0"
 
-
-[patch.crates-io]
-blst = { git = 'https://github.com/supranational/blst' }
