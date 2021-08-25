@@ -1,13 +1,13 @@
-use crate::error::{Result};
+use crate::error::Result;
 use crate::utils::*;
-use crate::{Envelope};
-use blsttc::pairing::bls12_381::{Fr};
+use crate::Envelope;
+use blsttc::pairing::bls12_381::Fr;
 use blsttc::{PublicKey, SecretKeyShare, SignatureShare};
 
 /// Represents a single signature on an Envelope
 /// that requires muliple signatures by multiple
 /// BlindSigner parties.
-/// 
+///
 /// These signature shares must be combined together
 /// to form a complete Signature on the Envelope
 /// as well as on the Slip inside.
@@ -38,7 +38,7 @@ impl SignedEnvelopeShare {
 
 /// Represents a single party that signs the Envelope
 /// without seeing the Slip inside.
-/// 
+///
 /// Some scenarios require require muliple signatures
 /// by multiple BlindSigner parties in order to
 /// create an authoritative signature.
@@ -49,10 +49,7 @@ pub struct BlindSignerShare {
 
 impl BlindSignerShare {
     pub fn new(sks: SecretKeyShare, pk: PublicKey) -> Self {
-        Self {
-            sks,
-            pk,
-        }
+        Self { sks, pk }
     }
 
     pub fn public_key(&self) -> &PublicKey {
@@ -70,7 +67,10 @@ impl BlindSignerShare {
 
         // return bs sig on the wire
         let bs_sig_bytes = g2_to_be_bytes(bs_sig_g2);
-        println!("BlindSigner's signature of blinded message: {:?}", bs_sig_bytes);
+        println!(
+            "BlindSigner's signature of blinded message: {:?}",
+            bs_sig_bytes
+        );
 
         let signed_envelope = SignedEnvelopeShare {
             envelope: e,
@@ -90,14 +90,13 @@ impl From<(SecretKeyShare, PublicKey)> for BlindSignerShare {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand;
-    use blsttc::SecretKeySet;
     use crate::{Slip, SlipPreparer};
+    use blsttc::SecretKeySet;
 
     fn mk_secret_key_set(threshold: usize) -> SecretKeySet {
         let mut rng = rand::thread_rng();
         SecretKeySet::random(threshold, &mut rng)
-    }    
+    }
 
     #[test]
     fn m_of_n_signers() -> Result<()> {
@@ -106,7 +105,9 @@ mod tests {
 
         let officials: Vec<BlindSignerShare> = (0..num_signers)
             .into_iter()
-            .map(|i| BlindSignerShare::new(sks.secret_key_share(&i), sks.public_keys().public_key()))
+            .map(|i| {
+                BlindSignerShare::new(sks.secret_key_share(&i), sks.public_keys().public_key())
+            })
             .collect();
 
         let voter = SlipPreparer::from(*b"11111111111111111111111111111111");
@@ -118,14 +119,15 @@ mod tests {
 
         for o in officials.iter() {
             let signed_envelope_share = o.sign_envelope(envelope.clone())?;
-            let slip_sig_share = signed_envelope_share.signature_share_for_slip(voter.blinding_factor())?;
+            let slip_sig_share =
+                signed_envelope_share.signature_share_for_slip(voter.blinding_factor())?;
             shares_owned.push(slip_sig_share);
         }
 
         let shares: Vec<(usize, &SignatureShare)> = shares_owned
             .iter()
             .enumerate()
-            .map(|(i,s)| (i,s) )
+            .map(|(i, s)| (i, s))
             .collect();
 
         let slip_sig = sks.public_keys().combine_signatures(shares).unwrap();
@@ -143,9 +145,11 @@ mod tests {
         let sks = mk_secret_key_set(num_signers - 1);
 
         // We have one less signer than required
-        let officials: Vec<BlindSignerShare> = (0..num_signers-1)
+        let officials: Vec<BlindSignerShare> = (0..num_signers - 1)
             .into_iter()
-            .map(|i| BlindSignerShare::new(sks.secret_key_share(&i), sks.public_keys().public_key()))
+            .map(|i| {
+                BlindSignerShare::new(sks.secret_key_share(&i), sks.public_keys().public_key())
+            })
             .collect();
 
         let voter = SlipPreparer::from(*b"11111111111111111111111111111111");
@@ -156,14 +160,15 @@ mod tests {
 
         for o in officials.iter() {
             let signed_envelope_share = o.sign_envelope(envelope.clone())?;
-            let slip_sig_share = signed_envelope_share.signature_share_for_slip(voter.blinding_factor())?;
+            let slip_sig_share =
+                signed_envelope_share.signature_share_for_slip(voter.blinding_factor())?;
             shares_owned.push(slip_sig_share);
         }
 
         let shares: Vec<(usize, &SignatureShare)> = shares_owned
             .iter()
             .enumerate()
-            .map(|(i,s)| (i,s) )
+            .map(|(i, s)| (i, s))
             .collect();
 
         let result = sks.public_keys().combine_signatures(shares);

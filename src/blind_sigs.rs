@@ -9,7 +9,6 @@ use std::convert::TryInto;
 /// be stuffed inside an Envelope.
 pub type Slip = Vec<u8>;
 
-
 /// Represents the party that creates the Slip
 #[derive(Clone, Debug)]
 pub struct SlipPreparer {
@@ -99,7 +98,7 @@ impl TryFrom<&[u8]> for Envelope {
 
 /// An Envelope which has a signature written
 /// on it by the BlindSigner party.
-/// 
+///
 /// This is a special envelope that is lined with
 /// carbon paper, such that a signature on the envelope
 /// also signs the Slip inside, even though the
@@ -158,7 +157,10 @@ impl BlindSigner {
 
         // return bs sig on the wire
         let bs_sig_bytes = g2_to_be_bytes(bs_sig_g2);
-        println!("BlindSigner's signature of blinded message: {:?}", bs_sig_bytes);
+        println!(
+            "BlindSigner's signature of blinded message: {:?}",
+            bs_sig_bytes
+        );
 
         let signed_envelope = SignedEnvelope {
             envelope: e,
