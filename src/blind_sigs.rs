@@ -41,23 +41,6 @@ impl SlipPreparer {
 
         Envelope::from(blinded_msg)
     }
-
-    /// Verifies with pk that sig is valid for slip
-    #[allow(clippy::ptr_arg)]
-    pub fn verify_signature_on_slip(&self, slip: &Slip, sig: &Signature, pk: &PublicKey) -> bool {
-        verify_signature_on_slip(slip, sig, pk)
-    }
-
-    /// Verifies with pk that sig is valid for envelope
-    #[allow(clippy::ptr_arg)]
-    pub fn verify_signature_on_envelope(
-        &self,
-        envelope: &Envelope,
-        sig: &Signature,
-        pk: &PublicKey,
-    ) -> bool {
-        verify_signature_on_envelope(envelope, sig, pk)
-    }
 }
 
 impl Default for SlipPreparer {
@@ -205,15 +188,40 @@ impl From<SecretKey> for BlindSigner {
     }
 }
 
+/// Represents a neutral third party "expert" that can
+/// verify a Signature is valid on a Slip or Envelope.
+///
+/// Any party can take the Slip or Envelope to the
+/// SignatureExaminer for verification.
+pub struct SignatureExaminer;
+
+impl SignatureExaminer {
+    /// Verifies with pk that sig is valid for slip
+    #[allow(clippy::ptr_arg)]
+    pub fn verify_signature_on_slip(slip: &Slip, sig: &Signature, pk: &PublicKey) -> bool {
+        verify_signature_on_slip(slip, sig, pk)
+    }
+
+    /// Verifies with pk that sig is valid for envelope
+    #[allow(clippy::ptr_arg)]
+    pub fn verify_signature_on_envelope(
+        envelope: &Envelope,
+        sig: &Signature,
+        pk: &PublicKey,
+    ) -> bool {
+        verify_signature_on_envelope(envelope, sig, pk)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn single_signer() -> Result<()> {
-        let official = BlindSigner::from(*b"********************************");
+        let official = BlindSigner::from(*b"*******************************-");
 
-        let voter = SlipPreparer::from(*b"11111111111111111111111111111111");
+        let voter = SlipPreparer::from(*b"11111111111111111111111111111110");
         let slip: Slip = b"I vote for mickey mouse".to_vec();
         let envelope = voter.place_slip_in_envelope(&slip);
 
@@ -223,8 +231,11 @@ mod tests {
         // check that the envelope returned to us has a valid signature on it
         // ie check the authority signed the blinded message correctly
         let envelope_sig = signed_envelope.signature_on_envelope();
-        let env_sig_is_valid =
-            voter.verify_signature_on_envelope(&envelope, &envelope_sig, &official.public_key());
+        let env_sig_is_valid = SignatureExaminer::verify_signature_on_envelope(
+            &envelope,
+            &envelope_sig,
+            &official.public_key(),
+        );
         assert!(env_sig_is_valid);
 
         let slip_sig = signed_envelope.signature_on_slip(voter.blinding_factor())?;
@@ -236,19 +247,19 @@ mod tests {
         // check the slip signature has a valid signature from the official
         // ie check the official signature has been applied the unblinded message correctly
         let slip_sig_is_valid =
-            voter.verify_signature_on_slip(&slip, &slip_sig, &official.public_key());
+            SignatureExaminer::verify_signature_on_slip(&slip, &slip_sig, &official.public_key());
         assert!(slip_sig_is_valid);
 
         // nobody else can unblind the signature, only the voter
-        let other_voter = SlipPreparer::from(*b"22222222222222222222222222222222");
+        let other_voter = SlipPreparer::from(*b"22222222222222222222222222222221");
         let bad_slip_sig = signed_envelope.signature_on_slip(other_voter.blinding_factor())?;
-        let bad_slip_sig_is_valid =
-            voter.verify_signature_on_slip(&slip, &bad_slip_sig, &official.public_key());
+        let bad_slip_sig_is_valid = SignatureExaminer::verify_signature_on_slip(
+            &slip,
+            &bad_slip_sig,
+            &official.public_key(),
+        );
         assert!(!bad_slip_sig_is_valid);
 
         Ok(())
-
-        // todo: official needs to receive the unblinded slip and verify it
-        // has the official's signature.
     }
 }

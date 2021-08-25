@@ -27,6 +27,8 @@ mod error;
 mod shares;
 mod utils;
 
-pub use crate::blind_sigs::{BlindSigner, Envelope, SignedEnvelope, Slip, SlipPreparer};
+pub use crate::blind_sigs::{
+    BlindSigner, Envelope, SignatureExaminer, SignedEnvelope, Slip, SlipPreparer,
+};
 pub use crate::error::{Error, Result};
 pub use crate::shares::{BlindSignerShare, SignedEnvelopeShare};

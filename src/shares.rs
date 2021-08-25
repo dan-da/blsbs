@@ -92,7 +92,7 @@ impl From<(SecretKeyShare, PublicKey)> for BlindSignerShare {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Slip, SlipPreparer};
+    use crate::{SignatureExaminer, Slip, SlipPreparer};
     use blsttc::SecretKeySet;
 
     fn mk_secret_key_set(threshold: usize) -> SecretKeySet {
@@ -134,8 +134,11 @@ mod tests {
 
         let slip_sig = sks.public_keys().combine_signatures(shares).unwrap();
 
-        let result =
-            voter.verify_signature_on_slip(&slip, &slip_sig, &sks.public_keys().public_key());
+        let result = SignatureExaminer::verify_signature_on_slip(
+            &slip,
+            &slip_sig,
+            &sks.public_keys().public_key(),
+        );
 
         assert!(result);
 
