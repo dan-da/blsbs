@@ -5,8 +5,13 @@ use blsttc::{PublicKey, SecretKey, Signature};
 use std::convert::TryFrom;
 use std::convert::TryInto;
 
+/// Represents a paper Slip that will
+/// be stuffed inside an Envelope.
 pub type Slip = Vec<u8>;
 
+
+/// Represents the party that creates the Slip
+#[derive(Clone, Debug)]
 pub struct SlipPreparer {
     blinding_factor: Fr,
 }
@@ -58,6 +63,9 @@ impl From<[u8; 32]> for SlipPreparer {
     }
 }
 
+/// An Envelope holds a Slip inside without
+/// revealing the Slip's contents.
+#[derive(Clone, Debug)]
 pub struct Envelope {
     blinded_msg: G2,
 }
@@ -89,6 +97,13 @@ impl TryFrom<&[u8]> for Envelope {
     }
 }
 
+/// An Envelope which has a signature written
+/// on it by the BlindSigner party.
+/// 
+/// This is a special envelope that is lined with
+/// carbon paper, such that a signature on the envelope
+/// also signs the Slip inside, even though the
+/// BlindSigner party has never seen the Slip.
 pub struct SignedEnvelope {
     pub envelope: Envelope,
     signature: Signature,
@@ -114,6 +129,8 @@ impl SignedEnvelope {
     }
 }
 
+/// Represents the party that signs the Envelope
+/// without seeing the Slip inside.
 #[derive(Default)]
 pub struct BlindSigner {
     sk: SecretKey,

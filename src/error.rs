@@ -10,9 +10,6 @@ pub type Error = BlindSignatureError;
 #[derive(Error, Debug)]
 /// error variants.
 pub enum BlindSignatureError {
-    #[error("An error occured when signing {0}")]
-    Signing(String),
-
     #[error("blst error")]
     Blst(BLST_ERROR),
 
