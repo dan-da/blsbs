@@ -16,6 +16,7 @@ pub struct SlipPreparer {
 }
 
 impl SlipPreparer {
+    /// creates a new SlipPreparer with a random blinding factor
     pub fn new() -> Self {
         let sk = SecretKey::random();
 
@@ -24,10 +25,14 @@ impl SlipPreparer {
         }
     }
 
+    /// returns the blinding_factor used to hide the Slip in the Envelope
     pub fn blinding_factor(&self) -> Fr {
         self.blinding_factor
     }
 
+    /// places a Slip into an opaque Envelope
+    ///
+    /// the message is blinded using Self::blinding_factor()
     #[allow(clippy::ptr_arg)]
     pub fn place_slip_in_envelope(&self, slip: &Slip) -> Envelope {
         let msg_g2 = hash_g2_with_dst(&slip);
@@ -37,6 +42,7 @@ impl SlipPreparer {
         Envelope::from(blinded_msg)
     }
 
+    /// Verifies with pk that sig is valid for slip
     #[allow(clippy::ptr_arg)]
     pub fn verify_slip_signature(
         &self,
@@ -49,12 +55,14 @@ impl SlipPreparer {
 }
 
 impl Default for SlipPreparer {
+    /// creates a new SlipPreparer with a random blinding factor
     fn default() -> Self {
         Self::new()
     }
 }
 
 impl From<[u8; 32]> for SlipPreparer {
+    /// creates a new SlipPreparer from byte array with len = 32.
     fn from(b: [u8; 32]) -> Self {
         Self {
             blinding_factor: fr_from_be_bytes(b),
@@ -70,18 +78,21 @@ pub struct Envelope {
 }
 
 impl Envelope {
+    /// returns the blinded message/slip.
     pub fn blinded_msg(&self) -> G2 {
         self.blinded_msg
     }
 }
 
 impl From<G2> for Envelope {
+    /// creates Envelope from a G2
     fn from(blinded_msg: G2) -> Self {
         Self { blinded_msg }
     }
 }
 
 impl From<[u8; 96]> for Envelope {
+    /// creates Envelope from byte array of len = 96
     fn from(b: [u8; 96]) -> Self {
         Self::from(be_bytes_to_g2(b))
     }
@@ -90,6 +101,7 @@ impl From<[u8; 96]> for Envelope {
 impl TryFrom<&[u8]> for Envelope {
     type Error = Error;
 
+    /// creates Envelope from &[u8]
     fn try_from(b: &[u8]) -> Result<Self> {
         let bytes: [u8; 96] = b.try_into()?;
         Ok(Self::from(bytes))
@@ -109,10 +121,13 @@ pub struct SignedEnvelope {
 }
 
 impl SignedEnvelope {
+    /// returns the signature written on Envelope
     pub fn signature_for_envelope(&self) -> &Signature {
         &self.signature
     }
 
+    /// returns the signature written on Slip.  requires knowledge of
+    /// SlipPreparer's blinding_factor.
     pub fn signature_for_slip(&self, blinding_factor: Fr) -> Result<Signature> {
         // unblind the BlindSigner's sig
         let blinded_sig_g2 = be_bytes_to_g2(self.signature.to_bytes());
@@ -136,20 +151,24 @@ pub struct BlindSigner {
 }
 
 impl BlindSigner {
+    /// Creates a new BlindSigner with a random SecretKey
     pub fn new() -> Self {
         Self {
             sk: SecretKey::random(),
         }
     }
 
+    /// returns the PublicKey
     pub fn public_key(&self) -> PublicKey {
         self.sk.public_key()
     }
 
-    pub fn sk_bendian(&self) -> Fr {
+    /// converts SecretKey to big-endian bytes.
+    fn sk_bendian(&self) -> Fr {
         fr_from_be_bytes(self.sk.to_bytes())
     }
 
+    /// sign an Envelope to create a SignedEnvelope
     pub fn sign_envelope(&self, e: Envelope) -> Result<SignedEnvelope> {
         // Note we are signing a G2, not message bytes, so we can't
         // use blsttc:SecretKey.sign(msg);
@@ -172,6 +191,7 @@ impl BlindSigner {
 }
 
 impl From<[u8; 32]> for BlindSigner {
+    /// creates a BlindSigner from byte array of len = 32
     fn from(b: [u8; 32]) -> Self {
         let sk = SecretKey::from_bytes(b).unwrap();
         Self { sk }
@@ -179,6 +199,7 @@ impl From<[u8; 32]> for BlindSigner {
 }
 
 impl From<SecretKey> for BlindSigner {
+    /// creates a BlindSigner from a SecretKey
     fn from(sk: SecretKey) -> Self {
         Self { sk }
     }

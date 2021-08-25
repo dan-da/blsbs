@@ -17,10 +17,13 @@ pub struct SignedEnvelopeShare {
 }
 
 impl SignedEnvelopeShare {
+    /// returns the SignatureShare written on Envelope
     pub fn signature_share_for_envelope(&self) -> &SignatureShare {
         &self.sig_share
     }
 
+    /// returns the SignatureShare written on Slip.  requires knowledge of
+    /// SlipPreparer's blinding_factor.
     pub fn signature_share_for_slip(&self, blinding_factor: Fr) -> Result<SignatureShare> {
         // unblind the BlindSigner's sig
         let blinded_sig_g2 = be_bytes_to_g2(self.sig_share.to_bytes());
@@ -48,18 +51,22 @@ pub struct BlindSignerShare {
 }
 
 impl BlindSignerShare {
+    /// Creates a new BlindSignerShare from a given SecretKeyShare and PublicKey
     pub fn new(sks: SecretKeyShare, pk: PublicKey) -> Self {
         Self { sks, pk }
     }
 
+    /// returns the PublicKey
     pub fn public_key(&self) -> &PublicKey {
         &self.pk
     }
 
-    pub fn sks_bendian(&self) -> Fr {
+    /// converts SecretKey to big-endian bytes.
+    fn sks_bendian(&self) -> Fr {
         fr_from_be_bytes(self.sks.to_bytes())
     }
 
+    /// sign an Envelope to create a SignedEnvelopeShare
     pub fn sign_envelope(&self, e: Envelope) -> Result<SignedEnvelopeShare> {
         // Note we are signing a G2, not message bytes, so we can't
         // use blsttc:SecretKey.sign(msg);
@@ -82,6 +89,7 @@ impl BlindSignerShare {
 }
 
 impl From<(SecretKeyShare, PublicKey)> for BlindSignerShare {
+    /// creates a BlindSigner from (SecretKeyShare, PublicKey)
     fn from(t: (SecretKeyShare, PublicKey)) -> Self {
         Self { sks: t.0, pk: t.1 }
     }
