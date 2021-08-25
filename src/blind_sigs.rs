@@ -44,12 +44,7 @@ impl SlipPreparer {
 
     /// Verifies with pk that sig is valid for slip
     #[allow(clippy::ptr_arg)]
-    pub fn verify_signature_on_slip(
-        &self,
-        slip: &Slip,
-        sig: &Signature,
-        pk: &PublicKey,
-    ) -> bool {
+    pub fn verify_signature_on_slip(&self, slip: &Slip, sig: &Signature, pk: &PublicKey) -> bool {
         verify_signature_on_slip(slip, sig, pk)
     }
 
@@ -228,7 +223,8 @@ mod tests {
         // check that the envelope returned to us has a valid signature on it
         // ie check the authority signed the blinded message correctly
         let envelope_sig = signed_envelope.signature_on_envelope();
-        let env_sig_is_valid = voter.verify_signature_on_envelope(&envelope, &envelope_sig, &official.public_key());
+        let env_sig_is_valid =
+            voter.verify_signature_on_envelope(&envelope, &envelope_sig, &official.public_key());
         assert!(env_sig_is_valid);
 
         let slip_sig = signed_envelope.signature_on_slip(voter.blinding_factor())?;
@@ -239,15 +235,16 @@ mod tests {
 
         // check the slip signature has a valid signature from the official
         // ie check the official signature has been applied the unblinded message correctly
-        let slip_sig_is_valid = voter.verify_signature_on_slip(&slip, &slip_sig, &official.public_key());
+        let slip_sig_is_valid =
+            voter.verify_signature_on_slip(&slip, &slip_sig, &official.public_key());
         assert!(slip_sig_is_valid);
 
         // nobody else can unblind the signature, only the voter
         let other_voter = SlipPreparer::from(*b"22222222222222222222222222222222");
         let bad_slip_sig = signed_envelope.signature_on_slip(other_voter.blinding_factor())?;
-        let bad_slip_sig_is_valid = voter.verify_signature_on_slip(&slip, &bad_slip_sig, &official.public_key());
+        let bad_slip_sig_is_valid =
+            voter.verify_signature_on_slip(&slip, &bad_slip_sig, &official.public_key());
         assert!(!bad_slip_sig_is_valid);
-
 
         Ok(())
 

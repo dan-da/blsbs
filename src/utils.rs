@@ -6,8 +6,8 @@ use blsttc::pairing::bls12_381::{Fr, FrRepr, G2Affine, G2};
 use blsttc::{PublicKey, Signature};
 use std::borrow::Borrow;
 
+#[allow(clippy::ptr_arg)]
 pub(crate) fn verify_signature_on_slip(data: &Slip, sig: &Signature, pk: &PublicKey) -> bool {
-
     // Since the slip data can be any arbitrary bytes it's preprocessed into
     // a G2 using `hash_g2_with_dst`. After the preprocessing, the signature
     // is created (or in this case verified).
@@ -24,16 +24,17 @@ pub(crate) fn verify_signature_on_slip(data: &Slip, sig: &Signature, pk: &Public
 
     // confirm the signature and message verify using the blind-signer's public key
     // ie the blind-signer has signed the message without knowing the message
-    let verified = pk.verify_g2(sig, data_g2);
-
-    verified
+    pk.verify_g2(sig, data_g2)
 }
 
-pub(crate) fn verify_signature_on_envelope(data: &Envelope, sig: &Signature, pk: &PublicKey) -> bool {
-
-    // The official doesn't sign arbitrary bytes, it signs a G2, which means it
+pub(crate) fn verify_signature_on_envelope(
+    data: &Envelope,
+    sig: &Signature,
+    pk: &PublicKey,
+) -> bool {
+    // The blind-signer doesn't sign arbitrary bytes, it signs a G2, which means it
     // doesn't need to go through the preprocessing step for verification.
-    // Even if the official receives bytes, those represent a serialized G2 so
+    // Even if the blind-signer receives bytes, those represent a serialized G2 so
     // they don't preprocess the bytes, they directly deserialize them into a
     // G2 and sign them without any preprocessing being needed.
 
@@ -41,9 +42,7 @@ pub(crate) fn verify_signature_on_envelope(data: &Envelope, sig: &Signature, pk:
 
     // confirm the signature and message verify using the blind-signer's public key
     // ie the blind-signer has signed the message without knowing the message
-    let verified = pk.verify_g2(sig, data_g2);
-
-    verified
+    pk.verify_g2(sig, data_g2)
 }
 
 // blst equivalent of threshold_crypto pub(crate) fn hash_g2
