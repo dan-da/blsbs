@@ -26,8 +26,6 @@ pub(crate) fn verify_signature_on_slip(data: &Slip, sig: &Signature, pk: &Public
     // ie the blind-signer has signed the message without knowing the message
     let verified = pk.verify_g2(sig, data_g2);
 
-    println!("Msg verified using blind_signer_pk: {:?}", verified);
-
     verified
 }
 
@@ -44,7 +42,6 @@ pub(crate) fn verify_signature_on_envelope(data: &Envelope, sig: &Signature, pk:
     // confirm the signature and message verify using the blind-signer's public key
     // ie the blind-signer has signed the message without knowing the message
     let verified = pk.verify_g2(sig, data_g2);
-    println!("Msg verified using blind_signer_pk: {:?}", verified);
 
     verified
 }

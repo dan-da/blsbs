@@ -33,8 +33,6 @@ impl SignedEnvelopeShare {
         let unblinded_bytes = g2_to_be_bytes(unblinded_sig_g2);
         let unblinded_sig = SignatureShare::from_bytes(unblinded_bytes).unwrap();
 
-        println!("Unblinded signature: {:?}", unblinded_bytes);
-
         Ok(unblinded_sig)
     }
 }
@@ -74,10 +72,6 @@ impl BlindSignerShare {
 
         // return bs sig on the wire
         let bs_sig_bytes = g2_to_be_bytes(bs_sig_g2);
-        println!(
-            "BlindSigner's signature of blinded message: {:?}",
-            bs_sig_bytes
-        );
 
         let signed_envelope = SignedEnvelopeShare {
             envelope: e,
