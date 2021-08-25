@@ -44,13 +44,24 @@ impl SlipPreparer {
 
     /// Verifies with pk that sig is valid for slip
     #[allow(clippy::ptr_arg)]
-    pub fn verify_slip_signature(
+    pub fn verify_signature_on_slip(
         &self,
         slip: &Slip,
         sig: &Signature,
         pk: &PublicKey,
-    ) -> Result<()> {
-        verify_signature(slip, sig, pk)
+    ) -> bool {
+        verify_signature_on_slip(slip, sig, pk)
+    }
+
+    /// Verifies with pk that sig is valid for envelope
+    #[allow(clippy::ptr_arg)]
+    pub fn verify_signature_on_envelope(
+        &self,
+        envelope: &Envelope,
+        sig: &Signature,
+        pk: &PublicKey,
+    ) -> bool {
+        verify_signature_on_envelope(envelope, sig, pk)
     }
 }
 
@@ -122,20 +133,20 @@ pub struct SignedEnvelope {
 
 impl SignedEnvelope {
     /// returns the signature written on Envelope
-    pub fn signature_for_envelope(&self) -> &Signature {
+    pub fn signature_on_envelope(&self) -> &Signature {
         &self.signature
     }
 
     /// returns the signature written on Slip.  requires knowledge of
     /// SlipPreparer's blinding_factor.
-    pub fn signature_for_slip(&self, blinding_factor: Fr) -> Result<Signature> {
+    pub fn signature_on_slip(&self, blinding_factor: Fr) -> Result<Signature> {
         // unblind the BlindSigner's sig
         let blinded_sig_g2 = be_bytes_to_g2(self.signature.to_bytes());
         let unblinded_sig_g2 = unblind(blinded_sig_g2, blinding_factor);
 
         // Convert the unblinded G2 into a Signature
         let unblinded_bytes = g2_to_be_bytes(unblinded_sig_g2);
-        let unblinded_sig = Signature::from_bytes(unblinded_bytes).unwrap();
+        let unblinded_sig = Signature::from_bytes(unblinded_bytes)?;
 
         println!("Unblinded signature: {:?}", unblinded_bytes);
 
@@ -217,12 +228,32 @@ mod tests {
         let slip: Slip = b"I vote for mickey mouse".to_vec();
         let envelope = voter.place_slip_in_envelope(&slip);
 
-        let signed_envelope = official.sign_envelope(envelope)?;
+        // TODO consider implementing Copy for envelope?
+        let signed_envelope = official.sign_envelope(envelope.clone())?;
 
-        let slip_sig = signed_envelope.signature_for_slip(voter.blinding_factor())?;
-        let result = voter.verify_slip_signature(&slip, &slip_sig, &official.public_key());
+        // check that the envelope returned to us has a valid signature on it
+        // ie check the authority signed the blinded message correctly
+        let envelope_sig = signed_envelope.signature_on_envelope();
+        let env_sig_is_valid = voter.verify_signature_on_envelope(&envelope, &envelope_sig, &official.public_key());
+        assert!(env_sig_is_valid);
 
-        assert!(result.is_ok());
+        let slip_sig = signed_envelope.signature_on_slip(voter.blinding_factor())?;
+
+        // check the signed envelope is different to the signed message
+        // TODO consider if envelope_sig should be a value instead of a reference
+        assert!(slip_sig != *envelope_sig);
+
+        // check the slip signature has a valid signature from the official
+        // ie check the official signature has been applied the unblinded message correctly
+        let slip_sig_is_valid = voter.verify_signature_on_slip(&slip, &slip_sig, &official.public_key());
+        assert!(slip_sig_is_valid);
+
+        // nobody else can unblind the signature, only the voter
+        let other_voter = SlipPreparer::from(*b"22222222222222222222222222222222");
+        let bad_slip_sig = signed_envelope.signature_on_slip(other_voter.blinding_factor())?;
+        let bad_slip_sig_is_valid = voter.verify_signature_on_slip(&slip, &bad_slip_sig, &official.public_key());
+        assert!(!bad_slip_sig_is_valid);
+
 
         Ok(())
 

@@ -140,9 +140,9 @@ mod tests {
 
         let slip_sig = sks.public_keys().combine_signatures(shares).unwrap();
 
-        let result = voter.verify_slip_signature(&slip, &slip_sig, &sks.public_keys().public_key());
+        let result = voter.verify_signature_on_slip(&slip, &slip_sig, &sks.public_keys().public_key());
 
-        assert!(result.is_ok());
+        assert!(result);
 
         Ok(())
     }
