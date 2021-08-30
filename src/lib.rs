@@ -32,3 +32,4 @@ pub use crate::blind_sigs::{
 };
 pub use crate::error::{Error, Result};
 pub use crate::shares::{BlindSignerShare, SignedEnvelopeShare};
+pub use blsttc::pairing::bls12_381::Fr;

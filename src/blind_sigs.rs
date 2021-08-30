@@ -1,9 +1,11 @@
 use crate::error::{Error, Result};
 use crate::utils::*;
 use blsttc::pairing::bls12_381::{Fr, G2};
+use blsttc::IntoFr;
 use blsttc::{PublicKey, SecretKey, Signature};
 use std::convert::TryFrom;
 use std::convert::TryInto;
+use std::hash::{Hash, Hasher};
 
 /// Represents a paper Slip that will
 /// be stuffed inside an Envelope.
@@ -22,6 +24,12 @@ impl SlipPreparer {
 
         Self {
             blinding_factor: fr_from_be_bytes(sk.to_bytes()),
+        }
+    }
+
+    pub fn from_fr<V: IntoFr>(v: V) -> Self {
+        Self {
+            blinding_factor: into_fr(v),
         }
     }
 
@@ -61,7 +69,18 @@ impl From<[u8; 32]> for SlipPreparer {
 
 /// An Envelope holds a Slip inside without
 /// revealing the Slip's contents.
-#[derive(Clone, Debug)]
+//
+// note: presently the Envelope does not actually hold the Slip
+//       contents but only a blinded version of it.  So the
+//       SlipPreparer must keep the Slip around while waiting
+//       for BlindSigner response and also the Envelope metaphor
+//       breaks down a little bit.
+//
+//       We could possibly alter this such that the envelope
+//       also contains a Ciphertext of the Slip encrypted to
+//       the SlipPreparer.  Then the SlipPreparer could truly
+//       open the SignedEnvelope and read the Slip.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Envelope {
     blinded_msg: G2,
 }
@@ -70,6 +89,17 @@ impl Envelope {
     /// returns the blinded message/slip.
     pub fn blinded_msg(&self) -> G2 {
         self.blinded_msg
+    }
+
+    pub fn to_bytes(self) -> [u8; 96] {
+        self.into()
+    }
+}
+
+impl Hash for Envelope {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let bytes = g2_to_be_bytes(self.blinded_msg);
+        bytes.hash(state);
     }
 }
 
@@ -97,6 +127,19 @@ impl TryFrom<&[u8]> for Envelope {
     }
 }
 
+impl Into<[u8; 96]> for Envelope {
+    fn into(self) -> [u8; 96] {
+        g2_to_be_bytes(self.blinded_msg)
+    }
+}
+
+impl Into<Vec<u8>> for Envelope {
+    fn into(self) -> Vec<u8> {
+        let bytes: [u8; 96] = self.into();
+        bytes.to_vec()
+    }
+}
+
 /// An Envelope which has a signature written
 /// on it by the BlindSigner party.
 ///
@@ -104,6 +147,7 @@ impl TryFrom<&[u8]> for Envelope {
 /// carbon paper, such that a signature on the envelope
 /// also signs the Slip inside, even though the
 /// BlindSigner party has never seen the Slip.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedEnvelope {
     pub envelope: Envelope,
     signature: Signature,

@@ -3,6 +3,7 @@ use blst::{blst_hash_to_g2, blst_p2, blst_p2_compress};
 use blsttc::ff::{Field, PrimeField}; // for Fr trait
 use blsttc::group::{CurveAffine, CurveProjective, EncodedPoint};
 use blsttc::pairing::bls12_381::{Fr, FrRepr, G2Affine, G2};
+use blsttc::IntoFr;
 use blsttc::{PublicKey, Signature};
 use std::borrow::Borrow;
 
@@ -115,4 +116,11 @@ pub(crate) fn g2_to_be_bytes(g2: G2) -> [u8; 96] {
 // standalone function keeping all inputs at a consistent level of abstraction.
 pub(crate) fn sign_g2(g2: G2, fr: Fr) -> G2 {
     g2.into_affine().mul(fr)
+}
+
+// from blsttc
+pub(crate) fn into_fr<I: IntoFr>(x: I) -> Fr {
+    let mut result = Fr::zero();
+    result.add_assign(&x.into_fr());
+    result
 }
