@@ -91,11 +91,12 @@ impl Envelope {
         self.blinded_msg
     }
 
-    pub fn to_bytes(self) -> [u8; 96] {
-        self.into()
+    pub fn to_bytes(&self) -> [u8; 96] {
+        g2_to_be_bytes(self.blinded_msg)
     }
 }
 
+#[allow(clippy::derive_hash_xor_eq)]
 impl Hash for Envelope {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let bytes = g2_to_be_bytes(self.blinded_msg);
@@ -127,12 +128,14 @@ impl TryFrom<&[u8]> for Envelope {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<[u8; 96]> for Envelope {
     fn into(self) -> [u8; 96] {
         g2_to_be_bytes(self.blinded_msg)
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<Vec<u8>> for Envelope {
     fn into(self) -> Vec<u8> {
         let bytes: [u8; 96] = self.into();
