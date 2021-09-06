@@ -108,16 +108,6 @@ pub(crate) fn g2_to_be_bytes(g2: G2) -> [u8; 96] {
     bytes
 }
 
-// This is equivalent to blsttc SecretKey::sign_g2 but we don't use
-// it here because we'd be mixing abstractions. Blinding factor can be
-// Fr or SecretKey (they're the same thing in the end), and the G2 is maybe
-// a converted message (using hash_g2) or maybe a Signature, so it's not a
-// good idea to mix those two abstractions and we're better with this
-// standalone function keeping all inputs at a consistent level of abstraction.
-pub(crate) fn sign_g2(g2: G2, fr: Fr) -> G2 {
-    g2.into_affine().mul(fr)
-}
-
 // from blsttc
 pub(crate) fn into_fr<I: IntoFr>(x: I) -> Fr {
     let mut result = Fr::zero();

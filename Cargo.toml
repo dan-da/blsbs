@@ -7,10 +7,12 @@ edition = "2018"
 
 [dependencies]
 blst = "0.3.4"
-thiserror = "1.0.26"
-blsttc = "3.1.0"
+blsttc = "3.2.0"
 pairing = "0.20.0"
+thiserror = "1.0.26"
 
 [dev-dependencies]
 rand = "0.7.1"
 
+[patch.crates-io]
+#blsttc = {git="https://github.com/iancoleman/blsttc", branch="keyset_derive_child"}

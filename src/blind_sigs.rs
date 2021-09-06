@@ -43,7 +43,7 @@ impl SlipPreparer {
     /// the message is blinded using Self::blinding_factor()
     #[allow(clippy::ptr_arg)]
     pub fn place_slip_in_envelope(&self, slip: &Slip) -> Envelope {
-        let msg_g2 = hash_g2_with_dst(&slip);
+        let msg_g2 = hash_g2_with_dst(slip);
 
         let blinded_msg = blind(msg_g2, self.blinding_factor);
 
@@ -197,23 +197,15 @@ impl BlindSigner {
         self.sk.public_key()
     }
 
-    /// converts SecretKey to big-endian bytes.
-    fn sk_bendian(&self) -> Fr {
-        fr_from_be_bytes(self.sk.to_bytes())
-    }
-
     /// sign an Envelope to create a SignedEnvelope
     pub fn sign_envelope(&self, e: Envelope) -> Result<SignedEnvelope> {
         // Note we are signing a G2, not message bytes, so we can't
         // use blsttc:SecretKey.sign(msg);
-        let bs_sig_g2 = sign_g2(e.blinded_msg(), self.sk_bendian());
-
-        // return bs sig on the wire
-        let bs_sig_bytes = g2_to_be_bytes(bs_sig_g2);
+        let signature = self.sk.sign_g2(e.blinded_msg());
 
         let signed_envelope = SignedEnvelope {
             envelope: e,
-            signature: Signature::from_bytes(bs_sig_bytes)?,
+            signature,
         };
 
         Ok(signed_envelope)

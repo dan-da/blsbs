@@ -84,6 +84,14 @@ impl BlindSignerShare {
         }
     }
 
+    pub fn derive_child(&self, index: &[u8]) -> Self {
+        Self::new(
+            self.sks.derive_child(index),
+            self.sks_index,
+            self.pks.derive_child(index),
+        )
+    }
+
     pub fn secret_key_share(&self) -> &SecretKeyShare {
         &self.sks
     }
@@ -106,23 +114,15 @@ impl BlindSignerShare {
         self.pks.public_key()
     }
 
-    /// converts SecretKey to big-endian bytes.
-    fn sks_bendian(&self) -> Fr {
-        fr_from_be_bytes(self.sks.to_bytes())
-    }
-
     /// sign an Envelope to create a SignedEnvelopeShare
     pub fn sign_envelope(&self, e: Envelope) -> Result<SignedEnvelopeShare> {
         // Note we are signing a G2, not message bytes, so we can't
-        // use blsttc:SecretKey.sign(msg);
-        let bs_sig_g2 = sign_g2(e.blinded_msg(), self.sks_bendian());
-
-        // return bs sig on the wire
-        let bs_sig_bytes = g2_to_be_bytes(bs_sig_g2);
+        // use blsttc:SecretKeyShare.sign(msg);
+        let sig_share = self.sks.sign_g2(e.blinded_msg());
 
         let signed_envelope = SignedEnvelopeShare {
             envelope: e,
-            sig_share: SignatureShare::from_bytes(bs_sig_bytes)?,
+            sig_share,
             sig_share_index: self.sks_index,
         };
 
