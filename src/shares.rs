@@ -4,6 +4,7 @@ use crate::Envelope;
 use blsttc::pairing::bls12_381::Fr;
 use blsttc::IntoFr;
 use blsttc::{PublicKey, PublicKeySet, SecretKeyShare, SignatureShare};
+use serde::{Deserialize, Serialize};
 
 /// Represents a single signature on an Envelope
 /// that requires muliple signatures by multiple
@@ -12,10 +13,11 @@ use blsttc::{PublicKey, PublicKeySet, SecretKeyShare, SignatureShare};
 /// These signature shares must be combined together
 /// to form a complete Signature on the Envelope
 /// as well as on the Slip inside.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SignedEnvelopeShare {
     pub envelope: Envelope,
     sig_share: SignatureShare,
+    #[serde(serialize_with = "fr_serialize", deserialize_with = "fr_deserialize")]
     sig_share_index: Fr,
 }
 
@@ -135,6 +137,7 @@ mod tests {
     use super::*;
     use crate::{SignatureExaminer, Slip, SlipPreparer};
     use blsttc::SecretKeySet;
+    use std::convert::TryFrom;
 
     fn mk_secret_key_set(threshold: usize) -> SecretKeySet {
         let mut rng = rand::thread_rng();
@@ -153,7 +156,7 @@ mod tests {
             .map(|i| BlindSignerShare::new(sks.secret_key_share(&i), i, sks.public_keys()))
             .collect();
 
-        let voter = SlipPreparer::from(*b"11111111111111111111111111111111");
+        let voter = SlipPreparer::try_from(*b"11111111111111111111111111111111")?;
         let slip: Slip = b"I vote for mickey mouse".to_vec();
         let envelope = voter.place_slip_in_envelope(&slip);
 
@@ -195,7 +198,7 @@ mod tests {
             .map(|i| BlindSignerShare::new(sks.secret_key_share(&i), i, sks.public_keys()))
             .collect();
 
-        let voter = SlipPreparer::from(*b"11111111111111111111111111111111");
+        let voter = SlipPreparer::try_from(*b"11111111111111111111111111111111")?;
         let slip: Slip = b"I vote for mickey mouse".to_vec();
         let envelope = voter.place_slip_in_envelope(&slip);
 

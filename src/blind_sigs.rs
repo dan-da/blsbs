@@ -1,8 +1,10 @@
 use crate::error::{Error, Result};
 use crate::utils::*;
+use blsttc::convert::fr_from_be_bytes;
 use blsttc::pairing::bls12_381::{Fr, G2};
 use blsttc::IntoFr;
 use blsttc::{PublicKey, SecretKey, Signature};
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
@@ -19,12 +21,12 @@ pub struct SlipPreparer {
 
 impl SlipPreparer {
     /// creates a new SlipPreparer with a random blinding factor
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self> {
         let sk = SecretKey::random();
 
-        Self {
-            blinding_factor: fr_from_be_bytes(sk.to_bytes()),
-        }
+        Ok(Self {
+            blinding_factor: fr_from_be_bytes(sk.to_bytes())?,
+        })
     }
 
     pub fn from_fr<V: IntoFr>(v: V) -> Self {
@@ -54,16 +56,19 @@ impl SlipPreparer {
 impl Default for SlipPreparer {
     /// creates a new SlipPreparer with a random blinding factor
     fn default() -> Self {
-        Self::new()
+        Self {
+            blinding_factor: into_fr(0),
+        }
     }
 }
 
-impl From<[u8; 32]> for SlipPreparer {
+impl TryFrom<[u8; 32]> for SlipPreparer {
+    type Error = Error;
     /// creates a new SlipPreparer from byte array with len = 32.
-    fn from(b: [u8; 32]) -> Self {
-        Self {
-            blinding_factor: fr_from_be_bytes(b),
-        }
+    fn try_from(b: [u8; 32]) -> Result<Self> {
+        Ok(Self {
+            blinding_factor: fr_from_be_bytes(b)?,
+        })
     }
 }
 
@@ -80,8 +85,9 @@ impl From<[u8; 32]> for SlipPreparer {
 //       also contains a Ciphertext of the Slip encrypted to
 //       the SlipPreparer.  Then the SlipPreparer could truly
 //       open the SignedEnvelope and read the Slip.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Envelope {
+    #[serde(serialize_with = "g2_serialize", deserialize_with = "g2_deserialize")]
     blinded_msg: G2,
 }
 
@@ -150,7 +156,7 @@ impl Into<Vec<u8>> for Envelope {
 /// carbon paper, such that a signature on the envelope
 /// also signs the Slip inside, even though the
 /// BlindSigner party has never seen the Slip.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SignedEnvelope {
     pub envelope: Envelope,
     signature: Signature,
@@ -260,7 +266,7 @@ mod tests {
     fn single_signer() -> Result<()> {
         let official = BlindSigner::from(*b"*******************************-");
 
-        let voter = SlipPreparer::from(*b"11111111111111111111111111111110");
+        let voter = SlipPreparer::try_from(*b"11111111111111111111111111111110")?;
         let slip: Slip = b"I vote for mickey mouse".to_vec();
         let envelope = voter.place_slip_in_envelope(&slip);
 
@@ -290,7 +296,7 @@ mod tests {
         assert!(slip_sig_is_valid);
 
         // nobody else can unblind the signature, only the voter
-        let other_voter = SlipPreparer::from(*b"22222222222222222222222222222221");
+        let other_voter = SlipPreparer::try_from(*b"22222222222222222222222222222221")?;
         let bad_slip_sig = signed_envelope.signature_on_slip(other_voter.blinding_factor())?;
         let bad_slip_sig_is_valid = SignatureExaminer::verify_signature_on_slip(
             &slip,

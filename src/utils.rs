@@ -1,10 +1,12 @@
 use crate::{Envelope, Slip};
 use blst::{blst_hash_to_g2, blst_p2, blst_p2_compress};
-use blsttc::ff::{Field, PrimeField}; // for Fr trait
+use blsttc::convert::{fr_from_be_bytes, fr_to_be_bytes};
+use blsttc::ff::Field; // for Fr trait
 use blsttc::group::{CurveAffine, CurveProjective, EncodedPoint};
-use blsttc::pairing::bls12_381::{Fr, FrRepr, G2Affine, G2};
+use blsttc::pairing::bls12_381::{Fr, G2Affine, G2};
 use blsttc::IntoFr;
 use blsttc::{PublicKey, Signature};
+use serde::{Deserialize, Serializer};
 use std::borrow::Borrow;
 
 #[allow(clippy::ptr_arg)]
@@ -69,19 +71,19 @@ pub(crate) fn hash_g2_with_dst(msg: &[u8]) -> G2 {
 }
 
 // see blsttc util.rs
-pub(crate) fn fr_from_be_bytes(bytes: [u8; 32]) -> Fr {
-    let mut le_bytes = bytes;
-    le_bytes.reverse();
-    let mut fr_u64s = [0u64; 4];
-    for i in 0..4 {
-        let mut next_u64_bytes = [0u8; 8];
-        for j in 0..8 {
-            next_u64_bytes[j] = le_bytes[i * 8 + j];
-        }
-        fr_u64s[i] = u64::from_le_bytes(next_u64_bytes);
-    }
-    Fr::from_repr(FrRepr(fr_u64s)).unwrap()
-}
+// pub(crate) fn fr_from_be_bytes(bytes: [u8; 32]) -> Fr {
+//     let mut le_bytes = bytes;
+//     le_bytes.reverse();
+//     let mut fr_u64s = [0u64; 4];
+//     for i in 0..4 {
+//         let mut next_u64_bytes = [0u8; 8];
+//         for j in 0..8 {
+//             next_u64_bytes[j] = le_bytes[i * 8 + j];
+//         }
+//         fr_u64s[i] = u64::from_le_bytes(next_u64_bytes);
+//     }
+//     Fr::from_repr(FrRepr(fr_u64s)).unwrap()
+// }
 
 // y = x * r
 pub(crate) fn blind(g2: G2, r: Fr) -> G2 {
@@ -113,4 +115,44 @@ pub(crate) fn into_fr<I: IntoFr>(x: I) -> Fr {
     let mut result = Fr::zero();
     result.add_assign(&x.into_fr());
     result
+}
+
+pub(crate) fn g2_serialize<S>(g: &G2, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    s.serialize_bytes(&g2_to_be_bytes(*g))
+}
+
+pub(crate) fn g2_deserialize<'de, D>(deserializer: D) -> Result<G2, D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+{
+    let vbytes = Vec::<u8>::deserialize(deserializer)?;
+    let mut bytes: [u8; 96] = [0; 96];
+    bytes.copy_from_slice(&vbytes[0..]);
+
+    Ok(be_bytes_to_g2(bytes))
+}
+
+pub(crate) fn fr_serialize<S>(fr: &Fr, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    s.serialize_bytes(&fr_to_be_bytes(*fr))
+}
+
+pub(crate) fn fr_deserialize<'de, D>(deserializer: D) -> Result<Fr, D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+{
+    // Hopefully this mess is temporary until we get Fr::from_bytes()
+    let vbytes = Vec::<u8>::deserialize(deserializer)?;
+
+    let mut bytes: [u8; 32] = [0; 32];
+    bytes.copy_from_slice(&vbytes[0..]);
+
+    let fr = fr_from_be_bytes(bytes).map_err(serde::de::Error::custom)?;
+
+    Ok(fr)
 }
