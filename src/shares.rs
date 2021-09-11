@@ -61,6 +61,16 @@ impl SignedEnvelopeShare {
 
         Ok(unblinded_sig)
     }
+
+    pub fn signature_share_for_slip_with_index(
+        &self,
+        blinding_factor: Fr,
+    ) -> Result<(Fr, SignatureShare)> {
+        Ok((
+            self.sig_share_index,
+            self.signature_share_for_slip(blinding_factor)?,
+        ))
+    }
 }
 
 /// Represents a single party that signs the Envelope

@@ -278,7 +278,7 @@ mod tests {
         let envelope_sig = signed_envelope.signature_on_envelope();
         let env_sig_is_valid = SignatureExaminer::verify_signature_on_envelope(
             &envelope,
-            &envelope_sig,
+            envelope_sig,
             &official.public_key(),
         );
         assert!(env_sig_is_valid);
