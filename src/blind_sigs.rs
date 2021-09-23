@@ -85,7 +85,7 @@ impl TryFrom<[u8; 32]> for SlipPreparer {
 //       also contains a Ciphertext of the Slip encrypted to
 //       the SlipPreparer.  Then the SlipPreparer could truly
 //       open the SignedEnvelope and read the Slip.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Envelope {
     #[serde(serialize_with = "g2_serialize", deserialize_with = "g2_deserialize")]
     blinded_msg: G2,
@@ -102,7 +102,14 @@ impl Envelope {
     }
 }
 
-#[allow(clippy::derive_hash_xor_eq)]
+impl PartialEq for Envelope {
+    fn eq(&self, other: &Self) -> bool {
+        self.blinded_msg == other.blinded_msg
+    }
+}
+
+impl Eq for Envelope {}
+
 impl Hash for Envelope {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let bytes = g2_to_be_bytes(self.blinded_msg);
