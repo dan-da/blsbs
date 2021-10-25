@@ -14,8 +14,9 @@ use std::hash::{Hash, Hasher};
 pub type Slip = Vec<u8>;
 
 /// Represents the party that creates the Slip
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SlipPreparer {
+    #[serde(serialize_with = "fr_serialize", deserialize_with = "fr_deserialize")]
     blinding_factor: Fr,
 }
 
